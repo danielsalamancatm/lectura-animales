@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aventura Lectora: Elige tu Cuento</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #fef08a 0%, #fde047 50%, #facc15 100%);
+            min-height: 100vh;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+        .animate-shake {
+            animation: shake 0.4s ease-in-out;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-4">
+
+    <!-- Contenedor Principal del Juego -->
+    <div id="game-container" class="w-full max-w-3xl bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-6 md:p-8 border-4 border-amber-400">
+        
+        <!-- Cabecera Dinámica -->
+        <div id="header-container" class="text-center mb-6 hidden">
+            <span id="mission-badge" class="bg-amber-500 text-white text-xs md:text-sm font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow">Misión 1 de 4</span>
+            <h1 id="story-title" class="text-2xl md:text-4xl font-extrabold text-amber-900 mt-2">🦁 El León Dormilón</h1>
+            <p id="mission-subtitle" class="text-gray-600 text-sm md:text-base mt-1">Sube las piezas en orden correcto.</p>
+        </div>
+
+        <!-- Área de Contenido Dinámico -->
+        <div id="mission-content" class="space-y-6">
+            <!-- Se inyecta la pantalla de bienvenida y selección de cuentos -->
+        </div>
+
+        <!-- Estado / Retroalimentación -->
+        <div id="feedback-message" class="mt-6 text-center font-bold text-lg min-h-[32px]"></div>
+
+        <!-- Pie de control -->
+        <div id="footer-controls" class="mt-6 flex justify-between items-center border-t pt-4 border-gray-100 hidden">
+            <div class="text-xs text-gray-400 font-medium">⚠️ ¡Cuidado! Un error te regresa al inicio de la misión.</div>
+            <button onclick="restartGame(true)" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2 px-3 rounded-xl transition">Reiniciar Misión</button>
+        </div>
+    </div>
+
+    <!-- Script Principal del Juego -->
+    <script>
+        let playerName = "";
+        let selectedStoryKey = "leon";
+        
+        // Objeto para llevar el registro de cuentos completados
+        let completedStories = {
+            leon: false,
+            raton: false,
+            tortuga: false,
+            faisan: false
+        };
+
+        // Definición de las 4 historias con sus misiones
+        const storiesData = {
+            leon: {
+                title: "🦁 El León Dormilón",
+                key: "leon",
+                parts: [
+                    "Había una vez un león llamado Dante.",
+                    "A Dante le gustaba mucho dormir bajo el sol.",
+                    "Un día, una pequeña mariposa de colores se paró sobre su nariz.",
+                    "Dante abrió un ojo, luego abrió el otro y dio un gran bostezo: ¡Aaaah!",
+                    "El león se rio, saludó a su amiga la mariposa y decidió levantarse a jugar."
+                ],
+                mission2: [
+                    { prompt: "Copia el nombre del león (sin acento):", answer: "dante" },
+                    { prompt: "Copia el animal que le hizo cosquillas:", answer: "mariposa" },
+                    { prompt: "Copia lo que le gustaba hacer bajo el sol:", answer: "dormir" }
+                ],
+                mission3: [
+                    { sentence: "A Dante le gustaba mucho ___ bajo el sol.", options: ["dormir", "correr", "nadar"], correct: "dormir" },
+                    { sentence: "Una pequeña ___ se paró sobre su nariz.", options: ["abeja", "mariposa", "hormiga"], correct: "mariposa" },
+                    { sentence: "El león dio un gran ___: ¡Aaaah!", options: ["bostezo", "salto", "grito"], correct: "bostezo" }
+                ],
+                mission4: [
+                    "el leon duerme bajo el sol",
+                    "la mariposa vuela muy feliz"
+                ]
+            },
+            raton: {
+                title: "🐭 Simón, el ratón comelón",
+                key: "raton",
+                parts: [
+                    "Había una vez un pequeño ratón llamado Simón.",
+                    "A Simón le encantaba buscar pedacitos de queso fresco todas las noches.",
+                    "Un día, mientras corría sigilosamente por el suelo, encontró una gran rueda de queso amarillo.",
+                    "Muy feliz, dio un brinco de alegría, llamó a sus mejores amigos y organizaron una gran fiesta.",
+                    "Compartieron la cena y celebraron juntos hasta el amanecer."
+                ],
+                mission2: [
+                    { prompt: "Copia el nombre del ratón (sin acento):", answer: "simon" },
+                    { prompt: "Copia lo que le encantaba buscar:", answer: "queso" },
+                    { prompt: "Copia el momento en que salía:", answer: "noche" }
+                ],
+                mission3: [
+                    { sentence: "A Simón le encantaba buscar pedacitos de ___ fresco.", options: ["pan", "queso", "manzana"], correct: "queso" },
+                    { sentence: "El ratón encontró una gran rueda de queso ___.", options: ["amarillo", "rojo", "azul"], correct: "amarillo" },
+                    { sentence: "Simón organizó una gran ___ con sus amigos.", options: ["fiesta", "carrera", "pelea"], correct: "fiesta" }
+                ],
+                mission4: [
+                    "el raton come queso fresco",
+                    "los amigos bailan muy felices"
+                ]
+            },
+            tortuga: {
+                title: "🐢 Toby, la tortuga lenta",
+                key: "tortuga",
+                parts: [
+                    "En un jardín lleno de flores coloridas vivía Toby, una tortuga muy paciente y tranquila.",
+                    "A Toby le gustaba caminar despacio sintiendo el calor del sol sobre su caparazón.",
+                    "Una tarde calurosa, escuchó que una abeja necesitaba ayuda para cruzar el charco.",
+                    "Toby extendió su patita con mucho cuidado y ayudó a su pequeña amiga.",
+                    "Ambos celebraron con una gran sonrisa bajo la sombra de un árbol."
+                ],
+                mission2: [
+                    { prompt: "Copia el nombre de la tortuga:", answer: "toby" },
+                    { prompt: "Copia el animal que necesitaba ayuda:", answer: "abeja" },
+                    { prompt: "Copia lo que sentía sobre su caparazon:", answer: "sol" }
+                ],
+                mission3: [
+                    { sentence: "A Toby le gustaba caminar ___ sintiendo el calor.", options: ["rapido", "despacio", "saltando"], correct: "despacio" },
+                    { sentence: "Una pequeña ___ necesitaba ayuda para cruzar el charco.", options: ["abeja", "hormiga", "mariposa"], correct: "abeja" },
+                    { sentence: "La tortuga ayudó a su amiga con mucho ___.", options: ["cuidado", "miedo", "enojo"], correct: "cuidado" }
+                ],
+                mission4: [
+                    "la tortuga camina despacio",
+                    "la abeja cruza el charco"
+                ]
+            },
+            faisan: {
+                title: "🦚 Fabián, el faisán cantor",
+                key: "faisan",
+                parts: [
+                    "En lo alto de un gran árbol vivía Fabián, un hermoso faisán de plumas brillantes y doradas.",
+                    "Todas las mañanas, al salir el sol, a Fabián le gustaba cantar una melodía alegre.",
+                    "Un día, los demás pajaritos escucharon su hermosa voz.",
+                    "Se acercaron volando con mucho entusiasmo y admiración.",
+                    "Formaron un coro maravilloso que llenó de música todo el bosque."
+                ],
+                mission2: [
+                    { prompt: "Copia el nombre del ave (sin acento):", answer: "fabian" },
+                    { prompt: "Copia el animal protagonista (sin acento):", answer: "faisan" },
+                    { prompt: "Copia lo que le gustaba hacer por las mañanas:", answer: "cantar" }
+                ],
+                mission3: [
+                    { sentence: "A Fabián le gustaba cantar una melodía ___.", options: ["triste", "alegre", "silenciosa"], correct: "alegre" },
+                    { sentence: "El faisán tenía plumas brillantes y ___.", options: ["doradas", "negras", "grises"], correct: "doradas" },
+                    { sentence: "Los pajaritos formaron un ___ maravilloso.", options: ["coro", "circulo", "equipo"], correct: "coro" }
+                ],
+                mission4: [
+                    "el faisan canta muy alegre",
+                    "las plumas son doradas"
+                ]
+            }
+        };
+
+        let m1PiecesPool = [];
+        let m1UserBuilt = [];
+        let m2CurrentIndex = 0;
+        let m3CurrentIndex = 0;
+        let m4CurrentIndex = 0;
+        let m4TargetWords = [];
+        let m4ShuffledWords = [];
+        let m4UserSentence = [];
+
+        function shuffleArray(array) {
+            let arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        window.onload = function() {
+            showWelcomeScreen();
+        };
+
+        function showWelcomeScreen() {
+            document.getElementById("header-container").classList.add("hidden");
+            document.getElementById("footer-controls").classList.add("hidden");
+            document.getElementById("feedback-message").innerHTML = "";
+
+            let html = `
+                <div class="text-center space-y-4 py-2">
+                    <div class="text-5xl">📚✨</div>
+                    <h1 class="text-2xl md:text-4xl font-extrabold text-amber-900">¡Aventura Lectora!</h1>
+                    <p class="text-gray-600 text-sm md:text-base">Ingresa tu nombre y selecciona un cuento para jugar:</p>
+                    
+                    <div class="max-w-xs mx-auto">
+                        <input type="text" id="player-name-input" value="${playerName}" autocomplete="off" placeholder="Tu nombre aquí..." 
+                            class="w-full text-center text-lg font-bold bg-white border-2 border-amber-300 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-600 shadow-inner">
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto pt-2">
+            `;
+
+            for (let key in storiesData) {
+                const story = storiesData[key];
+                const isDone = completedStories[key];
+                html += `
+                    <button onclick="selectAndStart('${key}')" class="relative bg-amber-100 hover:bg-amber-200 border-2 ${isDone ? 'border-emerald-500 bg-emerald-50' : 'border-amber-300'} text-amber-900 font-bold p-3 rounded-xl shadow transition text-sm flex items-center justify-between px-4">
+                        <span>${story.title}</span>
+                        ${isDone ? '<span class="bg-emerald-600 text-white text-xs px-2 py-0.5 rounded-full font-bold">✔️ Completado</span>' : '<span class="text-xs text-amber-700">Pendiente</span>'}
+                    </button>
+                `;
+            }
+
+            html += `
+                    </div>
+                </div>
+            `;
+            document.getElementById("mission-content").innerHTML = html;
+        }
+
+        function selectAndStart(storyKey) {
+            const input = document.getElementById("player-name-input");
+            const val = input ? input.value.trim() : "";
+            if (!val) {
+                alert("Por favor ingresa tu nombre para continuar.");
+                return;
+            }
+            playerName = val;
+            selectedStoryKey = storyKey;
+
+            document.getElementById("header-container").classList.remove("hidden");
+            document.getElementById("footer-controls").classList.remove("hidden");
+            document.getElementById("story-title").innerText = storiesData[selectedStoryKey].title;
+            
+            setupMission1();
+        }
+
+        function restartGame(manual = false) {
+            const container = document.getElementById("game-container");
+            container.classList.add("animate-shake");
+            
+            const feedback = document.getElementById("feedback-message");
+            if (manual) {
+                feedback.innerHTML = `<span class="text-blue-600">🔄 Reiniciando misión actual...</span>`;
+            } else {
+                feedback.innerHTML = `<span class="text-red-600">❌ ¡Error! Volviendo al inicio de la misión.</span>`;
+            }
+
+            setTimeout(() => {
+                container.classList.remove("animate-shake");
+                setupMission1();
+            }, 800);
+        }
+
+        // ==========================================
+        // MISIÓN 1
+        // ==========================================
+        function setupMission1() {
+            document.getElementById("mission-badge").innerText = "Misión 1 de 4";
+            document.getElementById("mission-subtitle").innerText = `¡Hola ${playerName}! Sube las partes del cuento en orden correcto.`;
+            document.getElementById("feedback-message").innerHTML = "";
+
+            const parts = storiesData[selectedStoryKey].parts;
+            m1UserBuilt = [];
+            m1PiecesPool = shuffleArray(parts.map((text, idx) => ({ text, originalIndex: idx, id: Math.random() })));
+            renderMission1HTML();
+        }
+
+        function renderMission1HTML() {
+            const parts = storiesData[selectedStoryKey].parts;
+            let html = `
+                <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 shadow-inner">
+                    <h3 class="text-xs font-bold uppercase tracking-wide text-amber-800 mb-1">📖 Cuento Original (Referencia):</h3>
+                    <p class="text-amber-900 text-sm md:text-base italic leading-relaxed">${parts.join(" ")}</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Tu cuento armado:</label>
+                    <div class="min-h-[90px] bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-4 flex flex-col gap-2 justify-center">
+                        ${m1UserBuilt.length === 0 ? '<span class="text-gray-400 text-sm italic text-center">Sube las piezas aquí...</span>' : ''}
+                        ${m1UserBuilt.map(piece => `
+                            <div class="bg-amber-600 text-white font-medium p-2.5 rounded-xl shadow text-sm flex items-center justify-between">
+                                <span>${piece.text}</span>
+                                <span class="bg-amber-700 text-xs px-2 py-1 rounded">✔️ Colocado</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Piezas disponibles:</label>
+                    <div class="flex flex-col gap-2 max-h-40 overflow-y-auto p-2 bg-amber-100/50 rounded-2xl border border-amber-200">
+                        ${m1PiecesPool.map((piece, index) => `
+                            <div class="bg-white hover:bg-amber-50 border border-amber-300 p-2.5 rounded-xl shadow-sm flex items-center justify-between transition">
+                                <span class="text-amber-900 text-sm font-medium">${piece.text}</span>
+                                <button onclick="m1UploadPiece(${index})" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow transition transform hover:scale-105">
+                                    ⬆️ Subir
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            document.getElementById("mission-content").innerHTML = html;
+        }
+
+        function m1UploadPiece(poolIndex) {
+            const parts = storiesData[selectedStoryKey].parts;
+            const selectedPiece = m1PiecesPool[poolIndex];
+            const expectedIndex = m1UserBuilt.length;
+
+            if (selectedPiece.originalIndex === expectedIndex) {
+                m1UserBuilt.push(selectedPiece);
+                m1PiecesPool.splice(poolIndex, 1);
+                renderMission1HTML();
+
+                if (m1UserBuilt.length === parts.length) {
+                    document.getElementById("feedback-message").innerHTML = `<span class="text-emerald-600">🎉 ¡Misión 1 Superada! Pasando a Misión 2...</span>`;
+                    setTimeout(() => { setupMission2(); }, 1200);
+                }
+            } else {
+                restartGame(false);
+            }
+        }
+
+        // ==========================================
+        // MISIÓN 2 (Sin acentos)
+        // ==========================================
+        function setupMission2() {
+            m2CurrentIndex = 0;
+            window.shuffledM2Items = shuffleArray(storiesData[selectedStoryKey].mission2);
+            renderMission2Step();
+        }
+
+        function renderMission2Step() {
+            document.getElementById("mission-badge").innerText = "Misión 2 de 4";
+            document.getElementById("mission-subtitle").innerText = "Copia exactamente la palabra mostrada (sin acentos).";
+            document.getElementById("feedback-message").innerHTML = "";
+
+            const currentQ = window.shuffledM2Items[m2CurrentIndex];
+            let html = `
+                <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6 text-center space-y-5">
+                    <span class="bg-amber-200 text-amber-900 text-xs font-bold px-3 py-1 rounded-full">Pregunta ${m2CurrentIndex + 1} de ${window.shuffledM2Items.length}</span>
+                    <h3 class="text-lg md:text-xl font-bold text-amber-900">${currentQ.prompt}</h3>
+                    
+                    <div class="inline-block bg-white border-2 border-dashed border-amber-400 px-6 py-3 rounded-2xl shadow-sm">
+                        <span class="text-xs text-gray-400 block uppercase font-bold mb-1">Copia esta palabra:</span>
+                        <span class="text-2xl font-extrabold text-amber-600 tracking-wider lowercase">${currentQ.answer}</span>
+                    </div>
+                    
+                    <div class="max-w-xs mx-auto">
+                        <input type="text" id="m2-input" autocomplete="off" placeholder="Escribe aquí sin acentos..." 
+                            class="w-full text-center text-lg font-bold bg-white border-2 border-amber-300 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-600 shadow-inner lowercase"
+                            onkeypress="if(event.key === 'Enter') checkMission2()">
+                    </div>
+
+                    <div>
+                        <button onclick="checkMission2()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-6 py-2.5 rounded-xl shadow transition transform hover:scale-105">
+                            Comprobar
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.getElementById("mission-content").innerHTML = html;
+            setTimeout(() => { const input = document.getElementById("m2-input"); if(input) input.focus(); }, 100);
+        }
+
+        function checkMission2() {
+            const inputVal = document.getElementById("m2-input").value.trim().toLowerCase();
+            const currentQ = window.shuffledM2Items[m2CurrentIndex];
+
+            if (inputVal === currentQ.answer) {
+                m2CurrentIndex++;
+                if (m2CurrentIndex < window.shuffledM2Items.length) {
+                    document.getElementById("feedback-message").innerHTML = `<span class="text-emerald-600">✅ ¡Correcto! Siguiente...</span>`;
+                    setTimeout(() => { renderMission2Step(); }, 800);
+                } else {
+                    document.getElementById("feedback-message").innerHTML = `<span class="text-emerald-600">🎉 ¡Misión 2 Superada! Pasando a Misión 3...</span>`;
+                    setTimeout(() => { setupMission3(); }, 1200);
+                }
+            } else {
+                restartGame(false);
+            }
+        }
+
+        // ==========================================
+        // MISIÓN 3
+        // ==========================================
+        function setupMission3() {
+            m3CurrentIndex = 0;
+            window.shuffledM3Items = shuffleArray(storiesData[selectedStoryKey].mission3);
+            prepareMission3Step();
+        }
+
+        function prepareMission3Step() {
+            document.getElementById("mission-badge").innerText = "Misión 3 de 4";
+            document.getElementById("mission-subtitle").innerText = "Completa la oración seleccionando la palabra correcta.";
+            document.getElementById("feedback-message").innerHTML = "";
+
+            const currentQ = window.shuffledM3Items[m3CurrentIndex];
+            m3ShuffledOptions = shuffleArray(currentQ.options);
+
+            let html = `
+                <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6 text-center space-y-6">
+                    <span class="bg-amber-200 text-amber-900 text-xs font-bold px-3 py-1 rounded-full">Oración ${m3CurrentIndex + 1} de ${window.shuffledM3Items.length}</span>
+                    <h3 class="text-xl md:text-2xl font-bold text-amber-900">"${currentQ.sentence}"</h3>
+                    <p class="text-xs text-gray-500">Haz clic en la palabra correcta:</p>
+
+                    <div class="flex flex-wrap justify-center gap-3">
+                        ${m3ShuffledOptions.map(opt => `
+                            <button onclick="checkMission3('${opt}')" class="bg-white hover:bg-amber-100 text-amber-900 font-bold px-6 py-3 rounded-2xl shadow border-2 border-amber-300 transition transform hover:scale-105 text-base md:text-lg">
+                                ${opt}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            document.getElementById("mission-content").innerHTML = html;
+        }
+
+        function checkMission3(selectedOption) {
+            const currentQ = window.shuffledM3Items[m3CurrentIndex];
+
+            if (selectedOption === currentQ.correct) {
+                m3CurrentIndex++;
+                if (m3CurrentIndex < window.shuffledM3Items.length) {
+                    document.getElementById("feedback-message").innerHTML = `<span class="text-emerald-600">✅ ¡Muy bien! Siguiente...</span>`;
+                    setTimeout(() => { prepareMission3Step(); }, 800);
+                } else {
+                    document.getElementById("feedback-message").innerHTML = `<span class="text-emerald-600">🎉 ¡Misión 3 Superada! Pasando a Misión 4...</span>`;
+                    setTimeout(() => { setupMission4(); }, 1200);
+                }
+            } else {
+                restartGame(false);
+            }
+        }
+
+        // ==========================================
+        // MISIÓN 4
+        // ==========================================
+        function setupMission4() {
+            m4CurrentIndex = 0;
+            window.shuffledM4Sentences = shuffleArray(storiesData[selectedStoryKey].mission4);
+            loadMission4Step();
+        }
+
+        function loadMission4Step() {
+            document.getElementById("mission-badge").innerText = "Misión 4 de 4";
+            document.getElementById("mission-subtitle").innerText = "Observa la frase de referencia y arma las palabras en orden.";
+            document.getElementById("feedback-message").innerHTML = "";
+
+            const fullSentence = window.shuffledM4Sentences[m4CurrentIndex];
+            m4TargetWords = fullSentence.split(" ");
+            m4UserSentence = [];
+            m4ShuffledWords = shuffleArray(m4TargetWords.map((word, idx) => ({ word, id: Math.random() })));
+
+            renderMission4HTML();
+        }
+
+        function renderMission4HTML() {
+            const fullSentence = window.shuffledM4Sentences[m4CurrentIndex];
+
+            let html = `
+                <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 space-y-4">
+                    <div class="text-center">
+                        <span class="bg-amber-200 text-amber-900 text-xs font-bold px-3 py-1 rounded-full">Frase ${m4CurrentIndex + 1} de ${window.shuffledM4Sentences.length}</span>
+                        <h3 class="text-base md:text-lg font-bold text-amber-900 mt-2">Arma la siguiente frase:</h3>
+                    </div>
+
+                    <div class="bg-white border-2 border-dashed border-amber-400 p-4 rounded-xl text-center shadow-inner">
+                        <span class="text-xs text-gray-400 block uppercase font-bold mb-1">Frase de referencia a armar:</span>
+                        <span class="text-xl md:text-2xl font-extrabold text-amber-700 lowercase tracking-wide">"${fullSentence}"</span>
+                    </div>
+
+                    <div class="min-h-[60px] bg-gray-50 border-2 border-gray-300 rounded-xl p-3 flex flex-wrap gap-2 items-center justify-center">
+                        ${m4UserSentence.length === 0 ? '<span class="text-gray-400 text-sm italic">Haz clic en las palabras de abajo...</span>' : ''}
+                        ${m4UserSentence.map((item, idx) => `
+                            <span class="bg-amber-600 text-white font-bold px-3 py-1.5 rounded-xl text-sm shadow">
+                                ${item.word}
+                            </span>
+                        `).join('')}
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Palabras disponibles:</label>
+                        <div class="flex flex-wrap gap-2 justify-center p-2 bg-amber-100/50 rounded-xl border border-amber-200">
+                            ${m4ShuffledWords.map((item, idx) => `
+                                <button onclick="m4PickWord(${idx})" class="bg-white hover:bg-amber-50 text-amber-900 font-bold px-4 py-2 rounded-xl text-sm shadow-sm border border-amber-300 transition transform hover:scale-105">
+                                    ${item.word}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById("mission-content").innerHTML = html;
+        }
+
+        function m4PickWord(shuffledIdx) {
+            const picked = m4ShuffledWords[shuffledIdx];
+            const expectedWord = m4TargetWords[m4UserSentence.length];
+
+            if (picked.word.toLowerCase() === expectedWord.toLowerCase()) {
+                m4UserSentence.push(picked);
+                m4ShuffledWords.splice(shuffledIdx, 1);
+                renderMission4HTML();
+
+                if (m4UserSentence.length === m4TargetWords.length) {
+                    m4CurrentIndex++;
+                    if (m4CurrentIndex < window.shuffledM4Sentences.length) {
+                        document.getElementById("feedback-message").innerHTML = `<span class="text-emerald-600">✅ ¡Frase correcta! Siguiente frase...</span>`;
+                        setTimeout(() => { loadMission4Step(); }, 1200);
+                    } else {
+                        // ¡CUENTO COMPLETADO CON ÉXITO!
+                        completedStories[selectedStoryKey] = true;
+                        document.getElementById("feedback-message").innerHTML = `<span class="text-emerald-600 font-extrabold">🏆 ¡Cuento completado con éxito!</span>`;
+                        setTimeout(() => { showFinalSummary(); }, 1200);
+                    }
+                }
+            } else {
+                restartGame(false);
+            }
+        }
+
+        // ==========================================
+        // PANTALLA FINAL: Resumen y Felicitación
+        // ==========================================
+        function showFinalSummary() {
+            document.getElementById("header-container").classList.add("hidden");
+            document.getElementById("footer-controls").classList.add("hidden");
+            document.getElementById("feedback-message").innerHTML = "";
+
+            const storyTitle = storiesData[selectedStoryKey].title;
+
+            let html = `
+                <div class="text-center py-6 space-y-6">
+                    <div class="text-6xl animate-bounce">🌟🏆🎉</div>
+                    <h2 class="text-3xl md:text-4xl font-extrabold text-amber-900">¡Felicitaciones, ${playerName}!</h2>
+                    <p class="text-gray-700 text-base md:text-lg">Has completado todas las misiones del cuento <b>${storyTitle}</b>.</p>
+                    
+                    <div class="bg-amber-50 border-2 border-emerald-400 rounded-2xl p-6 text-left max-w-md mx-auto space-y-3 shadow-inner">
+                        <div class="text-center pb-2 border-b border-amber-200">
+                            <span class="bg-emerald-100 text-emerald-800 font-extrabold px-3 py-1 rounded-full text-xs uppercase tracking-wider">Estado: Cuento Completado ✔️</span>
+                        </div>
+                        <h4 class="font-bold text-amber-900 text-center uppercase tracking-wider text-sm">📊 Resumen de tu desempeño:</h4>
+                        <div class="flex justify-between items-center text-sm border-b pb-2 border-amber-200">
+                            <span class="text-gray-600">Misión 1 (Rompecabezas):</span>
+                            <span class="font-bold text-emerald-600">⭐ Completado</span>
+                        </div>
+                        <div class="flex justify-between items-center text-sm border-b pb-2 border-amber-200">
+                            <span class="text-gray-600">Misión 2 (Copiar sin acentos):</span>
+                            <span class="font-bold text-emerald-600">⭐ Completado</span>
+                        </div>
+                        <div class="flex justify-between items-center text-sm border-b pb-2 border-amber-200">
+                            <span class="text-gray-600">Misión 3 (Completar oraciones):</span>
+                            <span class="font-bold text-emerald-600">⭐ Completado</span>
+                        </div>
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-gray-600">Misión 4 (Ordenar frases):</span>
+                            <span class="font-bold text-emerald-600">⭐ Completado</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <button onclick="showWelcomeScreen()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-8 py-3 rounded-2xl shadow-lg transition transform hover:scale-105">
+                            Elegir Otro Cuento 🔄
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.getElementById("mission-content").innerHTML = html;
+        }
+    </script>
+</body>
+</html>
